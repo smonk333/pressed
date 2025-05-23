@@ -141,35 +141,64 @@ bool PressedProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
   #endif
 }
 
+//=============================envelope smoothing===============================
+float PressedProcessor::attackSmoothing(float target, float current, float attackMs)
+{
+    float coeff = std::exp(-1.0f / (getSampleRate() * attackMs * 0.001f));
+    return coeff * current + (1.0f - coeff) * target;
+}
+
+float PressedProcessor::releaseSmoothing(float target, float current, float releaseMs)
+{
+    float coeff = std::exp(-1.0f / (getSampleRate() * releaseMs * 0.001f));
+    return coeff * current + (1.0f - coeff) * target;
+}
+//==============================================================================
+
 void PressedProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
+    const float threshold = *thresholdParam;
+    const float ratio = *ratioParam;
+    const float attack = *attackParam;
+    const float release = *releaseParam;
+    const float makeup = *makeupGainParam;
 
-    juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
-    auto totalNumOutputChannels = getTotalNumOutputChannels();
+    auto numChannels = buffer.getNumChannels();
+    auto numSamples = buffer.getNumSamples();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    for (int ch = 0; ch < numChannels; ++ch)
     {
-        auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
+        float* channelData = buffer.getWritePointer(ch);
+        float env = 0.0f;
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float input = channelData[i];
+            float db = juce::Decibels::gainToDecibels(std::abs(input) + 1e-6f);
+            float overThreshold = db - threshold;
+
+            float gainReduction = 0.0f;
+            if (overThreshold > 0.0f)
+            {
+                float compressedDB = threshold + (overThreshold / ratio);
+                float gainDB = compressedDB - db;
+                gainReduction = juce::Decibels::decibelsToGain(gainDB);
+            }
+            else
+            {
+                gainReduction = 1.0f;
+            }
+
+            // smooth the gain using an attack/release envelope follower
+            env = (gainReduction < env)
+                ? attackSmoothing(gainReduction, env, attack)
+                : releaseSmoothing(gainReduction, env, release);
+
+            float makeupGain = juce::Decibels::decibelsToGain(makeup);
+            channelData[i] = input * env * makeupGain;
+        }
     }
 }
 

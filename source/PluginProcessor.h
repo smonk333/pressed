@@ -16,6 +16,8 @@ public:
     void releaseResources() override;
 
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
+    float attackSmoothing (float target, float current, float attackMs);
+    float releaseSmoothing (float target, float current, float releaseMs);
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
