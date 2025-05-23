@@ -110,7 +110,7 @@ void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
+    envelopeFollowers.resize(getTotalNumOutputChannels(), 1.0f);
 }
 
 void PluginProcessor::releaseResources()
@@ -171,7 +171,7 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (int ch = 0; ch < numChannels; ++ch)
     {
         float* channelData = buffer.getWritePointer(ch);
-        float env = 0.0f;
+        float& env = envelopeFollowers[ch];
 
         for (int i = 0; i < numSamples; ++i)
         {

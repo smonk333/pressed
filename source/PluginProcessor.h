@@ -18,6 +18,7 @@ public:
     bool isBusesLayoutSupported (const BusesLayout& layouts) const override;
     float attackSmoothing (float target, float current, float attackMs);
     float releaseSmoothing (float target, float current, float releaseMs);
+    std::vector<float> envelopeFollowers;
 
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
