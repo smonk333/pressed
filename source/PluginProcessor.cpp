@@ -2,7 +2,7 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-PluginProcessor::PluginProcessor()
+PressedProcessor::PressedProcessor()
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
@@ -10,21 +10,43 @@ PluginProcessor::PluginProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+                     apvts(*this, nullptr, "Parameters", createParameterLayout())
 {
+    // caching parameter pointers
+    thresholdParam = apvts.getRawParameterValue("threshold");
+    ratioParam = apvts.getRawParameterValue("ratio");
+    attackParam = apvts.getRawParameterValue("attack");
+    releaseParam = apvts.getRawParameterValue("release");
+    makeupGainParam = apvts.getRawParameterValue("makeupGain");
 }
 
-PluginProcessor::~PluginProcessor()
+PressedProcessor::~PressedProcessor()
 {
 }
 
 //==============================================================================
-const juce::String PluginProcessor::getName() const
+
+juce::AudioProcessorValueTreeState::ParameterLayout PressedProcessor::createParameterLayout()
+{
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> params;
+
+    params.push_back(std::make_unique<juce::AudioParameterFloat> ("threshold", "Threshold", -60.0f, 0.0f, -24.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("ratio", "Ratio", 1.0f, 20.0f, 2.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("attack", "Attack", 0.1f, 100.0f, 10.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("release", "Release", 10.0f, 500.0f, 100.0f));
+    params.push_back(std::make_unique<juce::AudioParameterFloat>("makeupGain", "Makeup Gain", 0.0f, 24.0f, 0.0f));
+
+    return { params.begin(), params.end() };
+}
+
+//==============================================================================
+const juce::String PressedProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool PluginProcessor::acceptsMidi() const
+bool PressedProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -33,7 +55,7 @@ bool PluginProcessor::acceptsMidi() const
    #endif
 }
 
-bool PluginProcessor::producesMidi() const
+bool PressedProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -42,7 +64,7 @@ bool PluginProcessor::producesMidi() const
    #endif
 }
 
-bool PluginProcessor::isMidiEffect() const
+bool PressedProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -51,53 +73,53 @@ bool PluginProcessor::isMidiEffect() const
    #endif
 }
 
-double PluginProcessor::getTailLengthSeconds() const
+double PressedProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int PluginProcessor::getNumPrograms()
+int PressedProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int PluginProcessor::getCurrentProgram()
+int PressedProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void PluginProcessor::setCurrentProgram (int index)
+void PressedProcessor::setCurrentProgram (int index)
 {
     juce::ignoreUnused (index);
 }
 
-const juce::String PluginProcessor::getProgramName (int index)
+const juce::String PressedProcessor::getProgramName (int index)
 {
     juce::ignoreUnused (index);
     return {};
 }
 
-void PluginProcessor::changeProgramName (int index, const juce::String& newName)
+void PressedProcessor::changeProgramName (int index, const juce::String& newName)
 {
     juce::ignoreUnused (index, newName);
 }
 
 //==============================================================================
-void PluginProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
+void PressedProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     juce::ignoreUnused (sampleRate, samplesPerBlock);
 }
 
-void PluginProcessor::releaseResources()
+void PressedProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
 
-bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool PressedProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     juce::ignoreUnused (layouts);
@@ -119,7 +141,7 @@ bool PluginProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
   #endif
 }
 
-void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+void PressedProcessor::processBlock (juce::AudioBuffer<float>& buffer,
                                               juce::MidiBuffer& midiMessages)
 {
     juce::ignoreUnused (midiMessages);
@@ -152,18 +174,18 @@ void PluginProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 }
 
 //==============================================================================
-bool PluginProcessor::hasEditor() const
+bool PressedProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-juce::AudioProcessorEditor* PluginProcessor::createEditor()
+juce::AudioProcessorEditor* PressedProcessor::createEditor()
 {
     return new PluginEditor (*this);
 }
 
 //==============================================================================
-void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
+void PressedProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
@@ -171,7 +193,7 @@ void PluginProcessor::getStateInformation (juce::MemoryBlock& destData)
     juce::ignoreUnused (destData);
 }
 
-void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
+void PressedProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
@@ -182,5 +204,5 @@ void PluginProcessor::setStateInformation (const void* data, int sizeInBytes)
 // This creates new instances of the plugin..
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new PluginProcessor();
+    return new PressedProcessor();
 }
