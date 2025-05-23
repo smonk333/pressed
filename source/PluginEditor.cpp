@@ -1,6 +1,6 @@
 #include "PluginEditor.h"
 
-PluginEditor::PluginEditor (PressedProcessor& p)
+PluginEditor::PluginEditor (PluginProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;

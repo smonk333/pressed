@@ -7,7 +7,7 @@
 class PluginEditor : public juce::AudioProcessorEditor
 {
 public:
-    explicit PluginEditor (PressedProcessor&);
+    explicit PluginEditor (PluginProcessor&);
     ~PluginEditor() override;
 
     //==============================================================================
@@ -17,7 +17,7 @@ public:
 private:
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.
-    PressedProcessor& processor;
+    PluginProcessor& processor;
 
     juce::Slider thresholdSlider, ratioSlider, attackSlider, releaseSlider, makeupGainSlider;
 
